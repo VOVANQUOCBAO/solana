@@ -5,25 +5,33 @@ import { submitWork } from "@/lib/api";
 import styles from "./SubmitWorkModal.module.css";
 
 interface Props {
-  jobId: string;
+  milestoneId: string;
   jobTitle: string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function SubmitWorkModal({ jobId, jobTitle, onClose, onSuccess }: Props) {
+export default function SubmitWorkModal({ milestoneId, jobTitle, onClose, onSuccess }: Props) {
   const [link, setLink] = useState("");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<"form" | "confirming" | "done">("form");
+  const [error, setError] = useState("");
 
   const handleSubmit = async () => {
     if (!link.trim()) return;
+    setError("");
     setStep("confirming");
     setIsLoading(true);
-    await submitWork(jobId, { link, description });
-    setIsLoading(false);
-    setStep("done");
+    try {
+      await submitWork(milestoneId, { link, description });
+      setStep("done");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Không thể nộp sản phẩm.");
+      setStep("form");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -68,6 +76,7 @@ export default function SubmitWorkModal({ jobId, jobTitle, onClose, onSuccess }:
             </div>
 
             <div className={styles.form}>
+              {error && <div className="badge badge-red">{error}</div>}
               {/* Link field */}
               <div className="input-group">
                 <label className="input-label" htmlFor="submit-link">

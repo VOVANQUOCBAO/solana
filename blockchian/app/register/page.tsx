@@ -62,8 +62,6 @@ export default function RegisterPage() {
   // Student fields
   const [university, setUniversity] = useState("ĐH Khoa học Tự nhiên - ĐHQG TP.HCM");
   const [major, setMajor] = useState("Công nghệ thông tin (Kỹ thuật phần mềm)");
-  const [connectOcid, setConnectOcid] = useState(true);
-
   // Employer fields
   const [companyName, setCompanyName] = useState("");
   const [industry, setIndustry] = useState("Công nghệ thông tin / Web3");
@@ -111,8 +109,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMessage("Mật khẩu phải có ít nhất 6 ký tự.");
+    if (password.length < 8) {
+      setErrorMessage("Mật khẩu phải có ít nhất 8 ký tự.");
       return;
     }
 
@@ -403,7 +401,7 @@ export default function RegisterPage() {
                     id="reg-password"
                     type={showPassword ? "text" : "password"}
                     className="input-field"
-                    placeholder="Ít nhất 6 ký tự"
+                  placeholder="Ít nhất 8 ký tự"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required

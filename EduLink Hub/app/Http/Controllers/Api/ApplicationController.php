@@ -4,17 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Application;
 use App\Models\Job;
+use App\Services\SolanaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ApplicationController extends ApiController
 {
-    public function apply(Request $request, Job $job)
+    public function apply(Request $request, Job $job, SolanaService $solana)
     {
         if ($job->status !== 'open') {
             return $this->error('Công việc hiện không nhận ứng viên.', 409);
         }
-        if (! $request->user()->wallet_address) {
+        if (! $solana->isMock() && ! $request->user()->wallet_address) {
             return $this->error('Bạn cần kết nối ví Solana trước khi nhận việc.', 409);
         }
 
@@ -23,13 +24,13 @@ class ApplicationController extends ApiController
             ['source' => 'manual', 'status' => 'matched']
         );
 
-        return $this->accept($request, $application);
+        return $this->accept($request, $application, $solana);
     }
 
-    public function accept(Request $request, Application $application)
+    public function accept(Request $request, Application $application, SolanaService $solana)
     {
         abort_unless($application->student_id === $request->user()->id, 403);
-        if (! $request->user()->wallet_address) {
+        if (! $solana->isMock() && ! $request->user()->wallet_address) {
             return $this->error('Bạn cần kết nối ví Solana trước khi nhận việc.', 409);
         }
 

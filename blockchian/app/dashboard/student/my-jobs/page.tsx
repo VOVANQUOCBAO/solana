@@ -16,10 +16,14 @@ const STATUS_CONFIG: Record<MyJob["status"], { label: string; color: string; bad
 export default function MyJobsPage() {
   const [jobs, setJobs] = useState<MyJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [submitModal, setSubmitModal] = useState<{ jobId: string; jobTitle: string } | null>(null);
+  const [submitModal, setSubmitModal] = useState<{ milestoneId: string; jobTitle: string } | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchMyJobs().then((data) => { setJobs(data); setIsLoading(false); });
+    fetchMyJobs()
+      .then(setJobs)
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "Không tải được danh sách việc."))
+      .finally(() => setIsLoading(false));
   }, []);
 
   const totalEarned = jobs.filter(j => j.status === "approved").reduce((sum, j) => sum + j.budget, 0);
@@ -45,6 +49,8 @@ export default function MyJobsPage() {
         </div>
       </div>
 
+      {error && <div className="badge badge-red" style={{ marginBottom: "16px" }}>{error}</div>}
+
       {isLoading ? (
         <div className={styles.skeletons}>
           {[1, 2].map(i => (
@@ -61,6 +67,7 @@ export default function MyJobsPage() {
         <div className={styles.jobsList}>
           {jobs.map((job) => {
             const cfg = STATUS_CONFIG[job.status];
+            const nextMilestone = job.milestones.find((milestone) => milestone.status === "pending");
             const completedMilestones = job.milestones.filter(m => m.status !== "pending").length;
             const totalMilestones = job.milestones.length;
             const progressPct = totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
@@ -125,12 +132,12 @@ export default function MyJobsPage() {
                     <Clock size={13} />
                     Hạn: {new Date(job.deadline).toLocaleDateString("vi-VN")}
                   </div>
-                  {job.status === "in_progress" && (
+                  {job.status === "in_progress" && nextMilestone && (
                     <button
                       id={`submit-${job.id}`}
                       className="btn-primary"
                       style={{ fontSize: "13px", padding: "8px 20px" }}
-                      onClick={() => setSubmitModal({ jobId: job.id, jobTitle: job.title })}
+                      onClick={() => setSubmitModal({ milestoneId: nextMilestone.id, jobTitle: `${job.title} — ${nextMilestone.title}` })}
                     >
                       <Upload size={14} />
                       Nộp sản phẩm
@@ -152,7 +159,7 @@ export default function MyJobsPage() {
       {/* Submit modal */}
       {submitModal && (
         <SubmitWorkModal
-          jobId={submitModal.jobId}
+          milestoneId={submitModal.milestoneId}
           jobTitle={submitModal.jobTitle}
           onClose={() => setSubmitModal(null)}
           onSuccess={() => fetchMyJobs().then(setJobs)}

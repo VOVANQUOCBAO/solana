@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\JobController;
 use App\Http\Controllers\Api\MatchingController;
 use App\Http\Controllers\Api\MilestoneController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\StudentController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -36,6 +37,9 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware('role:student')->group(function () {
+        Route::get('/student/jobs', [StudentController::class, 'jobs']);
+        Route::get('/student/transactions', [StudentController::class, 'transactions']);
+        Route::get('/student/sbts', [StudentController::class, 'sbts']);
         Route::post('/jobs/{job}/apply', [ApplicationController::class, 'apply']);
         Route::post('/applications/{application}/accept', [ApplicationController::class, 'accept']);
         Route::post('/applications/{application}/reject', [ApplicationController::class, 'reject']);

@@ -13,6 +13,7 @@ class JobController extends ApiController
     {
         $jobs = Job::query()
             ->with(['employer:id,name,reputation_score', 'milestones'])
+            ->withCount('applications')
             ->when($request->status, fn ($query, $status) => $query->where('status', $status))
             ->when($request->search, fn ($query, $search) => $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")->orWhere('description', 'like', "%{$search}%");
@@ -25,6 +26,8 @@ class JobController extends ApiController
 
     public function show(Job $job)
     {
+        $job->loadCount('applications');
+
         return $this->success(
             $job->load(['employer:id,name,reputation_score', 'milestones', 'escrow']),
             'Lấy công việc thành công.'

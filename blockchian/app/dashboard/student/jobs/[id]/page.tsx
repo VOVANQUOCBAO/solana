@@ -3,31 +3,36 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Clock, Users, Star, Shield, CheckCircle, Loader } from "lucide-react";
 import { fetchJobById, applyJob, type Job } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
 import styles from "./page.module.css";
 
 export default function JobDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
   const [job, setJob] = useState<Job | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isApplying, setIsApplying] = useState(false);
   const [applied, setApplied] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchJobById(params.id as string).then((data) => {
-      setJob(data);
-      setIsLoading(false);
-    });
+    fetchJobById(params.id as string)
+      .then(setJob)
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "Không tải được công việc."))
+      .finally(() => setIsLoading(false));
   }, [params.id]);
 
   const handleApply = async () => {
     if (!job) return;
+    setError("");
     setIsApplying(true);
-    await applyJob(job.id);
-    setIsApplying(false);
-    setApplied(true);
+    try {
+      await applyJob(job.id);
+      setApplied(true);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Không thể nhận việc.");
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   if (isLoading) {
@@ -55,6 +60,8 @@ export default function JobDetailPage() {
         <ArrowLeft size={16} />
         Quay lại danh sách
       </button>
+
+      {error && <div className="badge badge-red" style={{ marginBottom: "16px" }}>{error}</div>}
 
       <div className={styles.layout}>
         {/* ── Main content ── */}

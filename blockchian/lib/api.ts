@@ -1,7 +1,9 @@
+import { publicApi, studentApi } from "./student-client";
+
 /**
  * lib/api.ts — API client cho EduLink Hub
  * Tích hợp với Backend (Khang) qua REST API
- * Mock data được dùng khi chưa có server thật
+ * Các hàm runtime bên dưới luôn gọi Laravel API; dữ liệu mẫu chỉ còn là fixture giao diện cũ.
  */
 
 /* ── Types ─────────────────────────────────────────────────── */
@@ -83,7 +85,7 @@ function getRelativeISODate(daysOffset: number, hoursOffset = 0, minutesOffset =
   return d.toISOString();
 }
 
-/* ── Mock Data (Cập nhật ngày giờ tự động theo thời gian thực) ─ */
+/* ── Legacy UI fixtures (không dùng trong runtime) ─────────── */
 export const MOCK_JOBS: Job[] = [
   {
     id: "job-001",
@@ -329,65 +331,196 @@ export const MOCK_SBTS: SBT[] = [
   },
 ];
 
-/* ── API Functions (mock, replace with real fetch to Khang's API) ─ */
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+/* ── API Functions ─────────────────────────────────────────── */
+interface BackendMilestone {
+  id: number;
+  title: string;
+  amount: string | number;
+  due_date: string;
+  status: string;
+  submissions?: Array<{ submitted_at: string }>;
+}
+
+interface BackendJob {
+  id: number;
+  title: string;
+  description: string;
+  required_skills?: string[] | null;
+  budget: string | number;
+  deadline: string;
+  status: string;
+  applications_count?: number;
+  created_at: string;
+  employer?: { name: string };
+  milestones?: BackendMilestone[];
+  escrow?: { id: number; program_id?: string | null } | null;
+}
+
+interface BackendApplication {
+  id: number;
+  status: string;
+  job: BackendJob;
+}
+
+interface Paginated<T> {
+  data: T[];
+}
+
+const categoryFor = (skills: string[]): string => {
+  const value = skills.join(" ").toLowerCase();
+  if (/solana|rust|solidity|web3|blockchain/.test(value)) return "Blockchain";
+  if (/react|vue|angular|css|frontend/.test(value)) return "Frontend";
+  if (/laravel|php|node|sql|backend/.test(value)) return "Backend";
+  if (/figma|design|ui|ux/.test(value)) return "Design";
+  if (/data|python|analysis/.test(value)) return "Data";
+  if (/writing|content|document/.test(value)) return "Writing";
+  return "Khác";
+};
+
+const mapJob = (job: BackendJob): Job => {
+  const skills = job.required_skills || [];
+  const days = Math.max(1, Math.ceil((new Date(job.deadline).getTime() - Date.now()) / 86400000));
+  const company = job.employer?.name || "Doanh nghiệp EduLink";
+  return {
+    id: String(job.id),
+    title: job.title,
+    company,
+    companyLogo: `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(company)}&size=40`,
+    category: categoryFor(skills),
+    skills,
+    requiredSBTs: [],
+    budget: Number(job.budget),
+    duration: `${days} ngày`,
+    deadline: job.deadline,
+    description: job.description,
+    status: ["open", "in_progress", "completed", "disputed"].includes(job.status)
+      ? job.status as Job["status"]
+      : "open",
+    applicants: job.applications_count || 0,
+    postedAt: job.created_at,
+  };
+};
+
+const mapMilestone = (milestone: BackendMilestone): Milestone => ({
+  id: String(milestone.id),
+  title: milestone.title,
+  amount: Number(milestone.amount),
+  status: milestone.status === "paid"
+    ? "paid"
+    : ["submitted", "approved"].includes(milestone.status)
+      ? "completed"
+      : "pending",
+  dueDate: milestone.due_date,
+});
+
+const mapMyJob = (application: BackendApplication): MyJob => {
+  const job = application.job;
+  const milestones = job.milestones || [];
+  const latestSubmission = milestones
+    .flatMap((milestone) => milestone.submissions || [])
+    .sort((a, b) => b.submitted_at.localeCompare(a.submitted_at))[0];
+  let status: MyJob["status"] = "in_progress";
+  if (job.status === "completed") status = "approved";
+  else if (job.status === "disputed") status = "disputed";
+  else if (milestones.some((milestone) => ["submitted", "approved"].includes(milestone.status))) status = "submitted";
+
+  return {
+    id: String(application.id),
+    jobId: String(job.id),
+    title: job.title,
+    company: job.employer?.name || "Doanh nghiệp EduLink",
+    budget: Number(job.budget),
+    status,
+    deadline: job.deadline,
+    submittedAt: latestSubmission?.submitted_at,
+    milestones: milestones.map(mapMilestone),
+    escrowAddress: job.escrow
+      ? job.escrow.program_id || `Escrow #${job.escrow.id}`
+      : undefined,
+  };
+};
 
 export async function fetchJobs(): Promise<Job[]> {
-  if (API_BASE) {
-    const res = await fetch(`${API_BASE}/api/jobs`);
-    return res.json();
-  }
-  await new Promise((r) => setTimeout(r, 600));
-  return MOCK_JOBS;
+  const page = await publicApi<Paginated<BackendJob>>("/jobs?status=open&per_page=50");
+  return page.data.map(mapJob);
 }
 
 export async function fetchJobById(id: string): Promise<Job | null> {
-  if (API_BASE) {
-    const res = await fetch(`${API_BASE}/api/jobs/${id}`);
-    return res.json();
+  try {
+    return mapJob(await publicApi<BackendJob>(`/jobs/${encodeURIComponent(id)}`));
+  } catch (error) {
+    if (error instanceof Error && "status" in error && error.status === 404) return null;
+    throw error;
   }
-  await new Promise((r) => setTimeout(r, 300));
-  return MOCK_JOBS.find((j) => j.id === id) ?? null;
 }
 
 export async function fetchMyJobs(): Promise<MyJob[]> {
-  await new Promise((r) => setTimeout(r, 500));
-  return MOCK_MY_JOBS;
+  const applications = await studentApi<BackendApplication[]>("/student/jobs");
+  return applications.map(mapMyJob);
 }
 
 export async function fetchTransactions(): Promise<Transaction[]> {
-  await new Promise((r) => setTimeout(r, 400));
-  return MOCK_TRANSACTIONS;
+  const transactions = await studentApi<Array<{
+    id: string;
+    type: Transaction["type"];
+    amount: number;
+    token: Transaction["token"];
+    from: string;
+    description: string;
+    timestamp: string;
+    tx_hash?: string | null;
+    status: Transaction["status"];
+  }>>("/student/transactions");
+  return transactions.map((item) => ({ ...item, txHash: item.tx_hash || undefined }));
 }
 
 export async function fetchSBTs(): Promise<SBT[]> {
-  await new Promise((r) => setTimeout(r, 400));
-  return MOCK_SBTS;
+  const sbts = await studentApi<Array<Record<string, unknown>>>("/student/sbts");
+  return sbts.map((item, index) => ({
+    id: String(item.id || item.token_address || `sbt-${index + 1}`),
+    title: String(item.title || item.name || "EduLink Credential"),
+    issuer: String(item.issuer || "EduLink Hub"),
+    category: String(item.category || "Web3"),
+    issuedAt: String(item.issued_at || item.issuedAt || new Date().toISOString()),
+    metadata: String(item.metadata || item.description || "Chứng chỉ xác thực trên EduLink Hub"),
+    tokenAddress: item.token_address ? String(item.token_address) : undefined,
+    imageUrl: item.image_url
+      ? String(item.image_url)
+      : `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(String(item.name || index))}`,
+  }));
 }
 
-export async function applyJob(_jobId: string): Promise<{ success: boolean }> {
-  await new Promise((r) => setTimeout(r, 1000));
+export async function applyJob(jobId: string): Promise<{ success: boolean }> {
+  await studentApi(`/jobs/${encodeURIComponent(jobId)}/apply`, { method: "POST" });
   return { success: true };
 }
 
 export async function submitWork(
-  _jobId: string,
-  _data: { link: string; description: string }
+  milestoneId: string,
+  data: { link: string; description: string }
 ): Promise<{ success: boolean }> {
-  await new Promise((r) => setTimeout(r, 1200));
+  await studentApi(`/milestones/${encodeURIComponent(milestoneId)}/submit`, {
+    method: "POST",
+    body: { work_url: data.link, description: data.description },
+  });
   return { success: true };
 }
 
 /* ── Chart data helpers ─────────────────────────────────────── */
-export function getIncomeChartData() {
+export function getIncomeChartData(transactions: Transaction[] = []) {
   const now = new Date();
   const months = [];
-  const amounts = [45, 80, 120, 160, 245.5];
   for (let i = 4; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const earned = transactions
+      .filter((transaction) => {
+        const date = new Date(transaction.timestamp);
+        return transaction.type === "earned" && date.getMonth() === d.getMonth() && date.getFullYear() === d.getFullYear();
+      })
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
     months.push({
       month: `Th${d.getMonth() + 1}`,
-      earned: amounts[4 - i],
+      earned,
     });
   }
   return months;

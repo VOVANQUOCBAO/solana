@@ -5,18 +5,20 @@ import {
   Tooltip, ResponsiveContainer,
 } from "recharts";
 import { fetchTransactions, getIncomeChartData, type Transaction } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
 import { ArrowUpRight, ArrowDownLeft, Minus, ExternalLink } from "lucide-react";
 import styles from "./page.module.css";
 
 export default function IncomePage() {
-  const { user } = useAuth();
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const chartData = getIncomeChartData();
+  const [error, setError] = useState("");
+  const chartData = getIncomeChartData(txs);
 
   useEffect(() => {
-    fetchTransactions().then((data) => { setTxs(data); setIsLoading(false); });
+    fetchTransactions()
+      .then(setTxs)
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "Không tải được giao dịch."))
+      .finally(() => setIsLoading(false));
   }, []);
 
   const totalEarned = txs.filter(t => t.type === "earned").reduce((s, t) => s + t.amount, 0);
@@ -29,11 +31,13 @@ export default function IncomePage() {
         <p className={styles.subtitle}>Theo dõi USDC kiếm được và lịch sử giao dịch Solana</p>
       </div>
 
+      {error && <div className="badge badge-red" style={{ marginBottom: "16px" }}>{error}</div>}
+
       {/* Summary cards */}
       <div className={styles.summaryCards}>
         <div className={`glass-card ${styles.summaryCard} ${styles.mainBalance}`}>
           <div className={styles.balanceLabel}>Số dư hiện tại</div>
-          <div className={styles.balanceNum}>{user?.usdc.toFixed(2)}</div>
+          <div className={styles.balanceNum}>{(totalEarned - totalWithdrawn).toFixed(2)}</div>
           <div className={styles.balanceToken}>USDC</div>
           <button id="withdraw-btn" className="btn-primary" style={{ marginTop: "20px", fontSize: "13px", padding: "10px 24px" }}>
             Rút về ví Phantom →

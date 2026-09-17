@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, Filter, Zap } from "lucide-react";
 import { fetchJobs, SKILL_CATEGORIES, type Job } from "@/lib/api";
 import JobCard from "@/components/student/JobCard";
@@ -7,22 +7,21 @@ import styles from "./page.module.css";
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [filtered, setFiltered] = useState<Job[]>([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Tất cả");
   const [budgetMin, setBudgetMin] = useState(0);
   const [showAIOnly, setShowAIOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchJobs().then((data) => {
-      setJobs(data);
-      setFiltered(data);
-      setIsLoading(false);
-    });
+    fetchJobs()
+      .then(setJobs)
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "Không tải được danh sách việc."))
+      .finally(() => setIsLoading(false));
   }, []);
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     let result = jobs;
     if (search) {
       const q = search.toLowerCase();
@@ -48,7 +47,7 @@ export default function JobsPage() {
       if (!a.isAIRecommended && b.isAIRecommended) return 1;
       return (b.matchScore ?? 0) - (a.matchScore ?? 0);
     });
-    setFiltered(result);
+    return result;
   }, [jobs, search, category, budgetMin, showAIOnly]);
 
   return (
@@ -72,6 +71,8 @@ export default function JobsPage() {
           </button>
         </div>
       </div>
+
+      {error && <div className="badge badge-red" style={{ marginBottom: "16px" }}>{error}</div>}
 
       {/* Filters */}
       <div className={`glass-card ${styles.filters}`}>

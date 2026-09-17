@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\Milestone;
 use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -30,7 +31,7 @@ class AuthController extends ApiController
         });
 
         return $this->success([
-            'user' => $user->load('studentProfile'),
+            'user' => $this->userPayload($user),
             'token' => $user->createToken('web')->plainTextToken,
         ], 'Đăng ký thành công.', 201);
     }
@@ -50,7 +51,7 @@ class AuthController extends ApiController
         }
 
         return $this->success([
-            'user' => $user->load('studentProfile'),
+            'user' => $this->userPayload($user),
             'token' => $user->createToken('web')->plainTextToken,
         ], 'Đăng nhập thành công.');
     }
@@ -64,6 +65,25 @@ class AuthController extends ApiController
 
     public function me(Request $request)
     {
-        return $this->success($request->user()->load('studentProfile'), 'Lấy hồ sơ thành công.');
+        return $this->success($this->userPayload($request->user()), 'Lấy hồ sơ thành công.');
+    }
+
+    private function userPayload(User $user): User
+    {
+        $user->load('studentProfile');
+
+        if ($user->role === 'student') {
+            $earnedBalance = Milestone::query()
+                ->where('status', 'paid')
+                ->whereHas('job.applications', fn ($query) => $query
+                    ->where('student_id', $user->id)
+                    ->where('status', 'accepted'))
+                ->sum('amount');
+
+            $user->setAttribute('earned_balance', (float) $earnedBalance);
+            $user->setAttribute('sbt_count', count($user->studentProfile?->sbt_data ?? []));
+        }
+
+        return $user;
     }
 }

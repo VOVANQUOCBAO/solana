@@ -13,13 +13,17 @@ export default function StudentDashboardPage() {
   const [aiJobs, setAiJobs] = useState<Job[]>([]);
   const [myJobs, setMyJobs] = useState<MyJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([fetchJobs(), fetchMyJobs()]).then(([jobs, mine]) => {
-      setAiJobs(jobs.filter((j) => j.isAIRecommended).slice(0, 3));
-      setMyJobs(mine);
-      setIsLoading(false);
-    });
+    Promise.all([fetchJobs(), fetchMyJobs()])
+      .then(([jobs, mine]) => {
+        const recommendations = jobs.filter((job) => job.isAIRecommended);
+        setAiJobs((recommendations.length ? recommendations : jobs).slice(0, 3));
+        setMyJobs(mine);
+      })
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "Không tải được dashboard."))
+      .finally(() => setIsLoading(false));
   }, []);
 
   if (!user) return null;
@@ -43,6 +47,8 @@ export default function StudentDashboardPage() {
           {new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long" })}
         </div>
       </div>
+
+      {error && <div className="badge badge-red" style={{ marginBottom: "16px" }}>{error}</div>}
 
       {/* ── Stats row ─────────────────────────────────── */}
       <div className={styles.statsRow}>

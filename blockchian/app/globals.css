@@ -3,8 +3,6 @@
    Vỹ — Frontend Sinh Viên
    ========================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 /* ── CSS Variables / Design Tokens ───────────────────────── */
 :root {
   /* Colors */
@@ -71,8 +69,8 @@
   --header-h:            64px;
 
   /* Fonts */
-  --font-sans:           'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono:           'JetBrains Mono', 'Fira Code', monospace;
+  --font-sans:           'Segoe UI', Arial, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:           'Cascadia Code', Consolas, 'Courier New', monospace;
 }
 
 /* ── Reset ───────────────────────────────────────────────── */

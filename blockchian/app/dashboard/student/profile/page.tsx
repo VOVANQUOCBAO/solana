@@ -11,9 +11,13 @@ export default function ProfilePage() {
   const [sbts, setSBTs] = useState<SBT[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchSBTs().then((data) => { setSBTs(data); setIsLoading(false); });
+    fetchSBTs()
+      .then(setSBTs)
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "Không tải được SBT."))
+      .finally(() => setIsLoading(false));
   }, []);
 
   const copyOCID = () => {
@@ -38,6 +42,7 @@ export default function ProfilePage() {
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>Hồ sơ & SBT Credentials</h1>
+      {error && <div className="badge badge-red" style={{ marginBottom: "16px" }}>{error}</div>}
 
       <div className={styles.layout}>
         {/* ── Left: Profile card ── */}
