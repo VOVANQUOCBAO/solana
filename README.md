@@ -6,7 +6,7 @@ Nền tảng kết nối sinh viên, doanh nghiệp và Mentor, gồm frontend N
 
 - `blockchian/`: frontend, giao diện sinh viên và dashboard Doanh nghiệp / Mentor / Admin.
 - `EduLink Hub/`: Laravel API, xác thực, công việc, milestone, matching và tranh chấp.
-- Mã nguồn được lưu trực tiếp trong hai thư mục trên, thay cho các bản ZIP trước đây.
+- Mã nguồn được lưu trực tiếp trong hai thư mục trên
 
 ## Chạy local
 
@@ -44,7 +44,7 @@ Mở http://127.0.0.1:3000/login. Địa chỉ API được cấu hình bởi `N
 
 ## Tài liệu và trạng thái
 
-Xem [bàn giao phần của Bảo](blockchian/docs/bao-workspace.md) để biết chức năng, tài khoản demo, kiểm thử và các phần cần tích hợp tiếp.
+ để biết chức năng, tài khoản demo, kiểm thử và các phần cần tích hợp tiếp.
 
 Dashboard Doanh nghiệp, Mentor và Admin đã kết nối API. Thanh toán mặc định ở chế độ mô phỏng; chuyển token thực tế, giải ngân tranh chấp và tích hợp xác thực sinh viên còn thuộc các phần việc tiếp theo. Đưa mã lên GitHub không đồng nghĩa ứng dụng đã được triển khai lên hosting.
 
