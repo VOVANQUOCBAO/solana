@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: edulink-hub-backend
+    runtime: docker
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    envVars:
+      - key: APP_NAME
+        value: EduLink Hub API
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: DB_CONNECTION
+        value: mysql
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: BLOCKCHAIN_MODE
+        value: mock
+      - key: LOG_CHANNEL
+        value: stderr
